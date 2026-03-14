@@ -5,103 +5,121 @@ from shapely.geometry import Polygon
 import tempfile
 import os
 import zipfile
-import shutil
 
 # Configuração da página
-st.set_page_config(page_title="poi2pol - Conversor CSV para Shapefile", layout="wide")
+st.set_page_config(page_title="POI2POL - Conversor CSV", layout="wide")
 
 # Título do Aplicativo
-st.title("🗺 POI2POL — Conversor CSV ➔ Shapefile (Polígonos)")
+st.title("🗺️ POI2POL — Conversor CSV ➔ Shapefile")
 
-# 1. Instruções (Expander aberto por padrão)
+# 1. Instruções Atualizadas
 with st.expander("📋 INSTRUÇÕES - Como preparar seu CSV", expanded=True):
     st.markdown("""
     ### Requisitos do Arquivo CSV:
-    1. **Colunas Obrigatórias:** `nome`, `x`, `y`.
-    2. **Identificador:** Cada polígono é agrupado pelo valor da coluna **nome**.
-    3. **Coordenadas:** Use o sistema **WGS 84 / UTM zone 23S (EPSG:32723)**.
-    4. **Formatação:** Use **ponto (.)** como separador decimal. Não use vírgulas em números.
-    5. **Ordem:** Os pontos devem estar na ordem sequencial (horário ou anti-horário).
+    1. **Colunas Obrigatórias:** `ponto`, `zona`, `x`, `y`, `locacao`.
+    2. **Agrupamento:** O sistema criará um polígono para cada valor diferente na coluna **locacao**.
+    3. **Software de Planilha:** Você pode usar Excel, LibreOffice ou Google Sheets, mas deve clicar em **"Salvar como"** e escolher o formato **CSV (Separado por vírgulas ou ponto e vírgula)**.
+    4. **Formatação Numérica:** Use **ponto (.)** como separador decimal (Ex: 566865.53).
     
-    **Exemplo de formato:**
+    **Exemplo de organização:**
     """)
     example_df = pd.DataFrame({
-        'nome': ['Sítio Arqueológico 1', 'Sítio Arqueológico 1', 'Sítio Arqueológico 1', 'Sítio Arqueológico 2', 'Sítio Arqueológico 2'],
+        'ponto': ['P1', 'P2', 'P3', 'PA', 'PB'],
+        'zona': ['23S', '23S', '23S', '23S', '23S'],
         'x': [566865.53, 566882.96, 566971.02, 562732.49, 562706.82],
-        'y': [9745153.65, 9745268.58, 9745343.86, 9740334.26, 9740920.31]
+        'y': [9745153.65, 9745268.58, 9745343.86, 9740334.26, 9740920.31],
+        'locacao': ['Sítio 1', 'Sítio 1', 'Sítio 1', 'Área B', 'Área B']
     })
     st.table(example_df)
-    st.info("💡 O sistema fecha automaticamente o polígono conectando o último ponto ao primeiro.")
+    st.info("💡 O sistema aceita automaticamente arquivos separados por vírgula (,) ou ponto e vírgula (;).")
 
-# 2. Área de Upload
-uploaded_file = st.file_uploader("Arraste ou selecione seu arquivo CSV", type=["csv"])
+# 2. Configurações de Geoprocessamento
+st.sidebar.header("Configurações de Projeção")
+crs_choice = st.sidebar.selectbox(
+    "Escolha o Sistema de Coordenadas (Datum):",
+    ["WGS 84 / UTM zone 23S (EPSG:32723)", "SIRGAS 2000 / UTM zone 23S (EPSG:31983)"]
+)
+target_crs = "EPSG:32723" if "WGS 84" in crs_choice else "EPSG:31983"
+
+# 3. Área de Upload
+uploaded_file = st.file_uploader("Selecione seu arquivo CSV", type=["csv"])
 
 if uploaded_file is not None:
     try:
-        df = pd.read_csv(uploaded_file)
+        # Tenta detectar o separador (vírgula ou ponto e vírgula)
+        content = uploaded_file.getvalue().decode('utf-8')
+        separator = ';' if content.count(';') > content.count(',') else ','
+        uploaded_file.seek(0) # Reseta o ponteiro do arquivo
         
-        # Validação básica de colunas
-        required_cols = {'nome', 'x', 'y'}
+        df = pd.read_csv(uploaded_file, sep=separator)
+        
+        # Validação de colunas
+        required_cols = {'ponto', 'zona', 'x', 'y', 'locacao'}
         if not required_cols.issubset(df.columns):
-            st.error(f"Erro: O CSV deve conter as colunas: {', '.join(required_cols)}")
+            st.error(f"Erro: O CSV deve conter exatamente as colunas: {', '.join(required_cols)}")
         else:
-            st.success("Arquivo carregado com sucesso!")
-            st.subheader("Preview dos Dados")
-            st.dataframe(df.head())
-
-            # 3. Processamento
+            st.success(f"Arquivo lido com sucesso (Separador detectado: '{separator}')")
+            
+            # Processamento
             polygons = []
-            names = []
+            locacao_names = []
+            valid_status = []
             
-            # Agrupamento por nome
-            grouped = df.groupby('nome')
+            grouped = df.groupby('locacao')
             
-            valid_processing = True
-            for name, group in grouped:
+            for locacao, group in grouped:
                 if len(group) < 3:
-                    st.warning(f"Atenção: O polígono '{name}' possui menos de 3 pontos e será ignorado.")
+                    st.warning(f"⚠️ '{locacao}' ignorado: Necessário pelo menos 3 pontos.")
                     continue
                 
-                # Criar lista de tuplas (x, y)
+                # Criar polígono
                 points = list(zip(group['x'], group['y']))
-                # Criar polígono (Shapely fecha automaticamente)
                 poly = Polygon(points)
                 
-                polygons.append(poly)
-                names.append(name)
-
-            if len(polygons) > 0:
-                # Criar GeoDataFrame
-                gdf = gpd.GeoDataFrame({'nome': names, 'geometry': polygons}, crs="EPSG:32723")
+                # Validação de Geometria
+                is_valid = poly.is_valid
                 
-                st.info(f"📊 Processamento concluído: {len(polygons)} polígono(s) gerado(s).")
+                polygons.append(poly)
+                locacao_names.append(locacao)
+                valid_status.append("Válida" if is_valid else "Inválida (Auto-interseção)")
 
-                # 4. Preparação do Download (ZIP)
+            if polygons:
+                # Criar GeoDataFrame
+                gdf = gpd.GeoDataFrame({
+                    'locacao': locacao_names, 
+                    'status_geo': valid_status,
+                    'geometry': polygons
+                }, crs=target_crs)
+                
+                st.subheader("Resumo do Processamento")
+                st.dataframe(gdf[['locacao', 'status_geo']])
+
+                # Verificação de erros críticos
+                if "Inválida (Auto-interseção)" in valid_status:
+                    st.error("🚨 Detectamos geometrias inválidas. O Shapefile será gerado, mas pode apresentar erros em softwares GIS.")
+
+                # 4. Exportação
                 with tempfile.TemporaryDirectory() as tmp_dir:
-                    base_filename = "poligonos_gerados"
-                    shp_path = os.path.join(tmp_dir, f"{base_filename}.shp")
-                    
-                    # Salvar shapefile (geopandas gera shp, shx, dbf, prj)
+                    base_name = "export_poi2pol"
+                    shp_path = os.path.join(tmp_dir, f"{base_name}.shp")
                     gdf.to_file(shp_path)
                     
-                    # Criar ZIP
-                    zip_path = os.path.join(tmp_dir, "shapefile_export.zip")
+                    zip_path = os.path.join(tmp_dir, "shapefile.zip")
                     with zipfile.ZipFile(zip_path, 'w') as zipf:
                         for ext in ['.shp', '.shx', '.dbf', '.prj']:
-                            file_to_zip = os.path.join(tmp_dir, f"{base_filename}{ext}")
-                            if os.path.exists(file_to_zip):
-                                zipf.write(file_to_zip, arcname=f"{base_filename}{ext}")
+                            f_path = os.path.join(tmp_dir, f"{base_name}{ext}")
+                            if os.path.exists(f_path):
+                                zipf.write(f_path, arcname=f"{base_name}{ext}")
 
-                    # Botão de Download
                     with open(zip_path, "rb") as f:
                         st.download_button(
-                            label="📥 Download ZIP com Shapefile",
+                            label="📥 Baixar Shapefile (ZIP)",
                             data=f,
-                            file_name="poi2pol_export.zip",
+                            file_name=f"poi2pol_{locacao_names[0]}.zip" if len(locacao_names)==1 else "poi2pol_multiplo.zip",
                             mime="application/zip"
                         )
             else:
-                st.error("Nenhum polígono válido pôde ser criado. Verifique a quantidade de pontos por área.")
+                st.error("Nenhum polígono pôde ser formado.")
 
     except Exception as e:
-        st.error(f"Ocorreu um erro ao processar o arquivo: {e}")
+        st.error(f"Erro ao processar: {e}")
