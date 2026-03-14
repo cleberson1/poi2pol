@@ -7,10 +7,10 @@ import os
 import zipfile
 
 # Configuração da página
-st.set_page_config(page_title="POI2POL - Conversor CSV", layout="wide")
+st.set_page_config(page_title="POI2POL - Conversor Geoespacial", layout="wide")
 
 # Título do Aplicativo
-st.title("🗺️ POI2POL — Conversor CSV ➔ Shapefile")
+st.title("🗺️ POI2POL — Conversor geoespacial de tabelas")
 
 # 1. Seção de Instruções
 with st.expander("📋 INSTRUÇÕES - Como preparar seu CSV", expanded=True):
