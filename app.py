@@ -11,7 +11,7 @@ import shutil
 st.set_page_config(page_title="poi2pol - Conversor CSV para Shapefile", layout="wide")
 
 # Título do Aplicativo
-st.title("📍 poi2pol — Conversor CSV ➔ Shapefile (Polígonos)")
+st.title("🗺 POI2POL — Conversor CSV ➔ Shapefile (Polígonos)")
 
 # 1. Instruções (Expander aberto por padrão)
 with st.expander("📋 INSTRUÇÕES - Como preparar seu CSV", expanded=True):
@@ -26,7 +26,7 @@ with st.expander("📋 INSTRUÇÕES - Como preparar seu CSV", expanded=True):
     **Exemplo de formato:**
     """)
     example_df = pd.DataFrame({
-        'nome': ['Sítio Peru', 'Sítio Peru', 'Sítio Peru', 'Sítio Pepital', 'Sítio Pepital'],
+        'nome': ['Sítio Arqueológico 1', 'Sítio Arqueológico 1', 'Sítio Arqueológico 1', 'Sítio Arqueológico 2', 'Sítio Arqueológico 2'],
         'x': [566865.53, 566882.96, 566971.02, 562732.49, 562706.82],
         'y': [9745153.65, 9745268.58, 9745343.86, 9740334.26, 9740920.31]
     })
