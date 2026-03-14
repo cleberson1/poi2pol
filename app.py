@@ -151,4 +151,4 @@ with tab2:
             st.error(f"Erro ao extrair vértices: {e}")
 
 # Rodapé
-st.markdown("<br><hr><div style='text-align: center; color: gray;'>Desenvolvido por Cleberson Carlos</div>", unsafe_allow_html=True)
+st.markdown("<br><hr><div style='text-align: center; color: gray;'>Desenvolvido por <b>Cleberson Carlos</b> para a galera que sofre no IPHAN</div>", unsafe_allow_html=True)
