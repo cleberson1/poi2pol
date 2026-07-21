@@ -14,7 +14,7 @@ st.set_page_config(page_title="POI2POL & Vertex Extractor", layout="wide")
 st.title("🗺️ POI2POL — Conversor e Extrator Geoespacial")
 
 # Criação das Abas
-tab1, tab2 = st.tabs(["📍 CSV para Polígono", "📐 Extrair Vértices de Shapefile"])
+tab1, tab2, tab3 = st.tabs(["📍 CSV para Polígono", "📐 Extrair Vértices de Shapefile", "🌐 Conversor Graus Decimais → UTM"])
 
 # --- ABA 1: POI2POL (Funcionalidade Original) ---
 with tab1:
@@ -149,6 +149,64 @@ with tab2:
                     )
         except Exception as e:
             st.error(f"Erro ao extrair vértices: {e}")
+            
+# --- ABA 3: CONVERSOR GRAUS DECIMAIS → UTM ---
+with tab3:
+    st.header("Conversor de Coordenadas Geográficas para UTM")
+    st.info("Insira as coordenadas em graus decimais para converter para o sistema UTM.")
+    
+    col_lat, col_lon = st.columns(2)
+    with col_lat:
+        lat = st.number_input("Latitude (graus decimais):", value=-23.5505, format="%.6f", key="lat_input")
+        st.caption("Exemplo: -23.5505 (Sul) ou 23.5505 (Norte)")
+    with col_lon:
+        lon = st.number_input("Longitude (graus decimais):", value=-46.6333, format="%.6f", key="lon_input")
+        st.caption("Exemplo: -46.6333 (Oeste) ou 46.6333 (Leste)")
+    
+    datum_choice_utm = st.selectbox("Datum:", ["WGS 84", "SIRGAS 2000"], key="datum_utm")
+    
+    if st.button("🔄 Converter para UTM", key="convert_utm"):
+        try:
+            import pyproj
+            
+            # Definir o CRS de origem (WGS 84)
+            crs_geog = "EPSG:4326"  # WGS 84
+            
+            # Determinar o fuso UTM baseado na longitude
+            utm_zone = int((lon + 180) / 6) + 1
+            hemisphere = "S" if lat < 0 else "N"
+            
+            # Definir o CRS de destino baseado no datum escolhido
+            if datum_choice_utm == "WGS 84":
+                crs_utm = f"EPSG:327{utm_zone:02d}" if hemisphere == "S" else f"EPSG:326{utm_zone:02d}"
+            else:  # SIRGAS 2000
+                crs_utm = f"EPSG:3198{utm_zone:02d}" if hemisphere == "S" else f"EPSG:3197{utm_zone:02d}"
+            
+            # Criar transformador
+            transformer = pyproj.Transformer.from_crs(crs_geog, crs_utm, always_xy=True)
+            
+            # Converter
+            x_utm, y_utm = transformer.transform(lon, lat)
+            
+            # Exibir resultados
+            st.success(f"✅ Conversão realizada com sucesso!")
+            
+            col_res1, col_res2, col_res3 = st.columns(3)
+            with col_res1:
+                st.metric("📍 Fuso UTM", f"{utm_zone}{hemisphere}")
+            with col_res2:
+                st.metric("📌 Coordenada X (Easting)", f"{x_utm:.2f} m")
+            with col_res3:
+                st.metric("📌 Coordenada Y (Northing)", f"{y_utm:.2f} m")
+            
+            st.info(f"🔍 Sistema de referência utilizado: {crs_utm}")
+            
+            # Opção de copiar coordenadas
+            st.code(f"X: {x_utm:.2f}\nY: {y_utm:.2f}\nFuso: {utm_zone}{hemisphere}", language="text")
+            
+        except Exception as e:
+            st.error(f"Erro na conversão: {e}. Verifique se os valores são válidos.")
+
 
 # Rodapé
 st.markdown("<br><hr><div style='text-align: center; color: gray;'>Desenvolvido por <b>Cleberson Carlos</b> para a galera que sofre no IPHAN</div>", unsafe_allow_html=True)
