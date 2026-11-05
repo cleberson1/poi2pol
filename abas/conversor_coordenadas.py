@@ -46,9 +46,9 @@ def _graus_para_utm(datum):
 def _utm_para_graus(datum):
     c1, c2 = st.columns(2)
     with c1:
-        x = st.number_input("X / Easting (m):", value=566865.53, format="%.2f", key="x_utm_input")
+        x = st.number_input("X ou E (Leste):", value=566865.53, format="%.2f", key="x_utm_input")
     with c2:
-        y = st.number_input("Y / Northing (m):", value=9745153.65, format="%.2f", key="y_utm_input")
+        y = st.number_input("Y ou N (Norte):", value=9745153.65, format="%.2f", key="y_utm_input")
 
     c3, c4 = st.columns(2)
     with c3:
