@@ -3,3 +3,5 @@ pandas
 geopandas
 shapely
 pyproj
+pyogrio
+python-dateutil
