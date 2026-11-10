@@ -18,7 +18,7 @@ ABAS = [
     ("📐 Extrair Vértices de Shapefile", extrair_vertices),
     ("🌐 Conversor de Coordenadas", conversor_coordenadas),
     ("🧭 KML/KMZ → Shapefile", kml_para_shp),
-    ("📅 Calculadora de Datas", calculadora_datas),
+    ("📅 Calculadora de Prazos", calculadora_datas),
 ]
 
 for tab, (_, modulo) in zip(st.tabs([nome for nome, _ in ABAS]), ABAS):
