@@ -86,7 +86,7 @@ def _somar_subtrair():
 
 
 def render():
-    st.header("Calculadora de Datas")
+    st.header("Calculadora de Prazos")
     modo = st.radio("O que você quer calcular?",
                     ["Período entre duas datas", "Somar ou subtrair tempo de uma data"],
                     horizontal=True, key="dt_modo")
